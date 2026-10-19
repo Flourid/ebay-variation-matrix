@@ -6,11 +6,12 @@ Firefox extension (desktop and Android) that adds an **"Show all variations"** b
 - Prices are formatted for the site language (e.g. "14,99 €" on eBay.de)
 - The currently selected variation is highlighted and the cheapest in-stock price is shown in green
 - Click or tap a row to switch the listing to that variation
+- Filter, "in stock only" and sort order are remembered per item while the tab is open, including after picking a variation
 - Full-screen card layout on phones, table on desktop; always light to match eBay (set `FOLLOW_SYSTEM_DARK_MODE` in `src/content.js` to follow the system dark mode)
 
 ## Permissions
 
-None. The extension has no `permissions` entry. It only declares a content script for `https://*.ebay.<tld>/itm/*` (de, com, at, ch, co.uk, ie, fr, it, es, nl, be, pl, ca, com.au). All data comes from the variation model that eBay already embeds in the item page, so the extension makes no network requests and collects no data.
+None. The extension has no `permissions` entry. It only declares a content script for `https://*.ebay.<tld>/itm/*` (de, com, at, ch, co.uk, ie, fr, it, es, nl, be, pl, ca, com.au). All data comes from the variation model that eBay already embeds in the item page, so the extension makes no network requests and collects no data. The remembered filter and sort are kept in the tab's `sessionStorage` and are cleared when the tab closes.
 
 ## How it works
 

@@ -227,6 +227,27 @@
     return m ? parseInt(m[0].replace(/[^\d]/g, ""), 10) : 1;
   }
 
+  // Filter and sort survive closing the dialog and the reload after picking a
+  // variation. Kept per tab and per item, since columns differ between items.
+  const itemId = (/\/itm\/(?:[^/]+\/)?(\d+)/.exec(location.pathname) || [])[1] || location.pathname;
+  const STATE_KEY = `evm-state:${itemId}`;
+
+  function loadState() {
+    try {
+      return JSON.parse(sessionStorage.getItem(STATE_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveState(state) {
+    try {
+      sessionStorage.setItem(STATE_KEY, JSON.stringify(state));
+    } catch (e) {
+      // Storage blocked or full: the dialog still works, it just won't remember.
+    }
+  }
+
   function variationUrl(variationId) {
     const url = new URL(location.href);
     url.searchParams.set("var", variationId);
@@ -258,8 +279,9 @@
       { key: "price", label: t.price, num: true, value: (r) => r.price, compare: (a, b) => a - b },
       { key: "stock", label: t.availability, value: stockCount, compare: (a, b) => a - b },
     ];
-    let sortKey = null;
-    let sortDir = 1;
+    const saved = loadState();
+    let sortKey = columns.some((c) => c.key === saved.sortKey) ? saved.sortKey : null;
+    let sortDir = saved.sortDir === -1 ? -1 : 1;
 
     const search = el("input", { type: "search", placeholder: t.filter, "aria-label": t.filter });
     const headers = columns.map((c) =>
@@ -303,6 +325,8 @@
         .map(([r]) => r);
     }
     const inStock = el("input", { type: "checkbox" });
+    search.value = typeof saved.search === "string" ? saved.search : "";
+    inStock.checked = saved.inStock === true;
     const summary = el("div", { class: "summary", role: "status" });
     const tbody = el("tbody");
     const scroll = el(
@@ -350,6 +374,7 @@
         return terms.every((term) => hay.includes(term));
       });
       rows = sortRows(rows);
+      saveState({ search: search.value, inStock: inStock.checked, sortKey, sortDir });
 
       columns.forEach((c, i) => {
         if (c.key === sortKey) headers[i].setAttribute("aria-sort", sortDir === 1 ? "ascending" : "descending");
