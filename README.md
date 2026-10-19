@@ -1,4 +1,4 @@
-# eBay Variation Matrix
+# Variation Matrix for eBay
 
 Firefox extension (desktop and Android) that adds an **"Show all variations"** button below the variation dropdowns on eBay listings. It opens a list of every variation combination with its price and stock.
 
@@ -10,6 +10,8 @@ Firefox extension (desktop and Android) that adds an **"Show all variations"** b
 - Click or tap a row to switch the listing to that variation
 - Search, column filters, "in stock only" and sort order are remembered per item while the tab is open, including after picking a variation
 - Full-screen card layout on phones, table on desktop; always light to match eBay (set `FOLLOW_SYSTEM_DARK_MODE` in `src/content.js` to follow the system dark mode)
+
+Not affiliated with or endorsed by eBay Inc.
 
 ## Permissions
 
@@ -35,3 +37,24 @@ node test/parse.test.js test/fixtures/item-127910134556-desktop.html
 ```
 
 Saved eBay pages for testing go in `test/fixtures/`. That directory is git-ignored because saved pages can contain personal data (see `test/fixtures/README.md`).
+
+## Publishing to addons.mozilla.org
+
+`amo-metadata.json` holds the store listing (summary, description, categories, license, notes for reviewers). `web-ext sign` sends it along with the upload:
+
+```sh
+npx web-ext sign --channel=listed --amo-metadata=amo-metadata.json \
+  --api-key="$AMO_JWT_ISSUER" --api-secret="$AMO_JWT_SECRET"
+```
+
+Get the key ("JWT issuer") and secret at <https://addons.mozilla.org/developers/addon/api/key/>.
+
+This is automated by `.github/workflows/release.yml`: push a tag such as `v1.1.0` and GitHub Actions sets that version in `manifest.json`, lints, builds and submits it to AMO for review, then attaches the zip to a GitHub release. It reads the repository secrets `AMO_JWT_ISSUER` and `AMO_JWT_SECRET`. Each tag must be a higher version than the last upload.
+
+```sh
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+## License
+
+MIT, see `LICENSE`.

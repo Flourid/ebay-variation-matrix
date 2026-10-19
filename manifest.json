@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "eBay Variation Matrix",
+  "name": "Variation Matrix for eBay",
   "version": "1.0.0",
   "description": "Adds a button next to the variation dropdowns on eBay listings that shows every variation with its price and availability.",
   "icons": {

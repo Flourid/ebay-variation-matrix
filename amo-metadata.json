@@ -1,0 +1,23 @@
+{
+  "categories": {
+    "firefox": ["shopping"],
+    "android": ["shopping"]
+  },
+  "default_locale": "en-US",
+  "summary": {
+    "en-US": "Shows every variation of an eBay listing (colour, size, material, …) in one sortable, filterable list with its price and stock. Not affiliated with eBay.",
+    "de": "Zeigt alle Varianten eines eBay-Angebots (Farbe, Größe, Material, …) in einer sortier- und filterbaren Liste mit Preis und Bestand. Nicht mit eBay verbunden."
+  },
+  "description": {
+    "en-US": "Listings with many variations hide their prices behind several dropdowns. This add-on puts a \"Show all variations\" button below them that opens a list of every combination with its price and stock.\n\n- Sort by any column, search, and filter each property (e.g. only materials containing \"pla\" or \"petg\")\n- Hide sold-out variations, see the cheapest price at a glance\n- Variations already in your cart are marked\n- Tap a row to switch the listing to that variation\n- Works on Firefox for desktop and Android\n\nNo permissions and no network requests: it only reads the variation data that eBay already includes in the item page. Nothing is collected or sent anywhere.\n\nThis add-on is not affiliated with or endorsed by eBay Inc.",
+    "de": "Angebote mit vielen Varianten verstecken ihre Preise hinter mehreren Auswahlfeldern. Dieses Add-on fügt darunter einen Knopf \"Alle Varianten anzeigen\" ein, der eine Liste aller Kombinationen mit Preis und Bestand öffnet.\n\n- Nach jeder Spalte sortieren, suchen und jede Eigenschaft filtern (z. B. nur Materialien mit \"pla\" oder \"petg\")\n- Ausverkaufte Varianten ausblenden, günstigsten Preis auf einen Blick sehen\n- Varianten im Warenkorb werden markiert\n- Zeile antippen, um das Angebot auf diese Variante umzustellen\n- Funktioniert in Firefox für Desktop und Android\n\nKeine Berechtigungen und keine Netzwerkanfragen: Es liest nur die Variantendaten, die eBay ohnehin in die Artikelseite einbettet. Es werden keine Daten gesammelt oder gesendet.\n\nDieses Add-on ist nicht mit eBay Inc. verbunden und wird nicht von eBay unterstützt."
+  },
+  "homepage": {
+    "en-US": "https://github.com/Flourid/ebay-variation-matrix"
+  },
+  "requires_payment": false,
+  "version": {
+    "license": "MIT",
+    "approval_notes": "No build step: the submitted files are the source (https://github.com/Flourid/ebay-variation-matrix). The content script only runs on eBay item pages (/itm/*). It parses the variation JSON that eBay embeds in an inline <script> and renders a dialog in a closed shadow root. It makes no network requests and uses no extension APIs; the dialog's filter/sort state is kept in the page's sessionStorage. Test page with many variations: https://www.ebay.de/itm/127910134556"
+  }
+}
