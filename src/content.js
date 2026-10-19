@@ -14,8 +14,6 @@
       filter: "Filter…",
       sort: "Sort",
       sortDefault: "Default order",
-      sortPriceAsc: "Price: low to high",
-      sortPriceDesc: "Price: high to low",
       inStockOnly: "In stock only",
       price: "Price",
       availability: "Availability",
@@ -32,8 +30,6 @@
       filter: "Filtern…",
       sort: "Sortierung",
       sortDefault: "Standard",
-      sortPriceAsc: "Preis aufsteigend",
-      sortPriceDesc: "Preis absteigend",
       inStockOnly: "Nur verfügbare",
       price: "Preis",
       availability: "Verfügbarkeit",
@@ -157,6 +153,16 @@
     }
     td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
     th.num, td.num { text-align: right; white-space: nowrap; }
+    th button {
+      all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+      font-weight: 700; border-radius: 4px;
+    }
+    th button:hover { color: var(--accent); }
+    th button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    th .arrow { width: 1em; text-align: center; color: var(--accent); }
+    th:not([aria-sort]) .arrow::after { content: "↕"; color: var(--muted); opacity: 0.5; }
+    th[aria-sort="ascending"] .arrow::after { content: "↑"; }
+    th[aria-sort="descending"] .arrow::after { content: "↓"; }
     tbody tr { cursor: pointer; }
     tbody tr:hover { background: var(--hover); }
     tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -199,6 +205,15 @@
     }
   `;
 
+  // Stock number from "28 verfügbar", "More than 10 available", "10+ …".
+  // In-stock text without a number is eBay's "Last one" / "Letzter Artikel".
+  function stockCount(row) {
+    if (row.outOfStock) return 0;
+    if (!row.availability) return null;
+    const m = /\d[\d.,\s]*/.exec(row.availability);
+    return m ? parseInt(m[0].replace(/[^\d]/g, ""), 10) : 1;
+  }
+
   function variationUrl(variationId) {
     const url = new URL(location.href);
     url.searchParams.set("var", variationId);
@@ -219,14 +234,70 @@
     const shadow = host.attachShadow({ mode: "closed" });
     shadow.append(el("style", {}, MODAL_CSS));
 
+    const collator = new Intl.Collator(lang, { numeric: true, sensitivity: "base" });
+    const columns = [
+      ...matrix.labels.map((label, i) => ({
+        key: String(i),
+        label,
+        value: (r) => r.values[i] || null,
+        compare: (a, b) => collator.compare(a, b),
+      })),
+      { key: "price", label: t.price, num: true, value: (r) => r.price, compare: (a, b) => a - b },
+      { key: "stock", label: t.availability, value: stockCount, compare: (a, b) => a - b },
+    ];
+    let sortKey = null;
+    let sortDir = 1;
+
     const search = el("input", { type: "search", placeholder: t.filter, "aria-label": t.filter });
     const sort = el(
       "select",
       { "aria-label": t.sort },
       el("option", { value: "default" }, t.sortDefault),
-      el("option", { value: "asc" }, t.sortPriceAsc),
-      el("option", { value: "desc" }, t.sortPriceDesc)
+      ...columns.flatMap((c) => [
+        el("option", { value: `${c.key}:1` }, `${c.label} ↑`),
+        el("option", { value: `${c.key}:-1` }, `${c.label} ↓`),
+      ])
     );
+    const headers = columns.map((c) =>
+      el(
+        "th",
+        { scope: "col", class: c.num ? "num" : false },
+        el(
+          "button",
+          { type: "button", onclick: () => toggleSort(c.key) },
+          c.label,
+          el("span", { class: "arrow", "aria-hidden": "true" })
+        )
+      )
+    );
+
+    // Header clicks cycle ascending → descending → default order.
+    function toggleSort(key) {
+      if (sortKey !== key) {
+        sortKey = key;
+        sortDir = 1;
+      } else if (sortDir === 1) {
+        sortDir = -1;
+      } else {
+        sortKey = null;
+      }
+      render();
+      scroll.scrollTop = 0;
+    }
+
+    function sortRows(rows) {
+      const col = columns.find((c) => c.key === sortKey);
+      if (!col) return rows;
+      // Rows without a value stay at the end in both directions; ties keep the default order.
+      return rows
+        .map((r) => [r, col.value(r)])
+        .sort(([, a], [, b]) => {
+          if (a == null) return b == null ? 0 : 1;
+          if (b == null) return -1;
+          return col.compare(a, b) * sortDir;
+        })
+        .map(([r]) => r);
+    }
     const inStock = el("input", { type: "checkbox" });
     const summary = el("div", { class: "summary", role: "status" });
     const tbody = el("tbody");
@@ -239,13 +310,7 @@
         el(
           "thead",
           {},
-          el(
-            "tr",
-            {},
-            ...matrix.labels.map((l) => el("th", { scope: "col" }, l)),
-            el("th", { scope: "col", class: "num" }, t.price),
-            el("th", { scope: "col" }, t.availability)
-          )
+          el("tr", {}, ...headers)
         ),
         tbody
       )
@@ -280,14 +345,13 @@
         const hay = r.values.join(" ").toLowerCase();
         return terms.every((term) => hay.includes(term));
       });
-      if (sort.value !== "default") {
-        const dir = sort.value === "asc" ? 1 : -1;
-        rows = rows.slice().sort((a, b) => {
-          if (a.price == null) return 1;
-          if (b.price == null) return -1;
-          return (a.price - b.price) * dir;
-        });
-      }
+      rows = sortRows(rows);
+
+      sort.value = sortKey == null ? "default" : `${sortKey}:${sortDir}`;
+      columns.forEach((c, i) => {
+        if (c.key === sortKey) headers[i].setAttribute("aria-sort", sortDir === 1 ? "ascending" : "descending");
+        else headers[i].removeAttribute("aria-sort");
+      });
 
       let text = t.count(rows.length, matrix.rows.length);
       if (minPrice != null && currency) {
@@ -349,7 +413,13 @@
     }
 
     search.addEventListener("input", render);
-    sort.addEventListener("change", render);
+    sort.addEventListener("change", () => {
+      const [key, dir] = sort.value.split(":");
+      sortKey = sort.value === "default" ? null : key;
+      sortDir = Number(dir) || 1;
+      render();
+      scroll.scrollTop = 0;
+    });
     inStock.addEventListener("change", render);
 
     const backdrop = el(
