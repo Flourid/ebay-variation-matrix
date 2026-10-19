@@ -22,6 +22,12 @@
       current: "selected",
       inCart: "In cart",
       inCartCount: (n) => `${n} in cart`,
+      filterColumn: (label) => `Filter ${label}`,
+      contains: "Contains… (e.g. pla petg)",
+      selectAll: "Select all",
+      clearFilter: "Clear filter",
+      clearAll: "Clear all filters",
+      noValues: "No values",
       close: "Close",
       count: (shown, total) => `${shown} of ${total} variations`,
       noMatch: "No variations match.",
@@ -38,6 +44,12 @@
       current: "ausgewählt",
       inCart: "Im Warenkorb",
       inCartCount: (n) => `${n} im Warenkorb`,
+      filterColumn: (label) => `${label} filtern`,
+      contains: "Enthält… (z. B. pla petg)",
+      selectAll: "Alle auswählen",
+      clearFilter: "Filter löschen",
+      clearAll: "Alle Filter löschen",
+      noValues: "Keine Werte",
       close: "Schließen",
       count: (shown, total) => `${shown} von ${total} Varianten`,
       noMatch: "Keine passenden Varianten.",
@@ -127,6 +139,7 @@
       max-height: calc(100vh - 48px); border-radius: 16px;
       display: flex; flex-direction: column; overflow: hidden;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      position: relative;
     }
     header {
       display: flex; align-items: center; gap: 12px;
@@ -149,6 +162,11 @@
       min-height: 36px; padding: 6px 10px; flex: 1 1 200px; min-width: 0;
     }
     .toolbar label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .link {
+      font: inherit; font-size: 13px; color: var(--accent); background: none;
+      border: 0; padding: 4px 0; cursor: pointer;
+    }
+    .link:hover { text-decoration: underline; }
     .summary { padding: 8px 16px; color: var(--muted); font-size: 13px; }
     .scroll {
       overflow: auto; flex: 1; min-height: 0;
@@ -172,6 +190,28 @@
     th:not([aria-sort]) .arrow::after { content: "↕"; color: var(--muted); opacity: 0.5; }
     th[aria-sort="ascending"] .arrow::after { content: "↑"; }
     th[aria-sort="descending"] .arrow::after { content: "↓"; }
+    th .filter-btn { margin-left: 6px; padding: 2px; color: var(--muted); opacity: 0.6; }
+    th .filter-btn:hover, th .filter-btn.active { color: var(--accent); opacity: 1; }
+    .filter-btn svg { width: 12px; height: 12px; display: block; }
+
+    /* Column filter popup, positioned inside the dialog under its header. */
+    .fp {
+      position: absolute; z-index: 3; display: flex; flex-direction: column; gap: 8px;
+      padding: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+    .fp-title { font-weight: 700; }
+    .fp input[type="search"] {
+      font: inherit; color: var(--fg); background: var(--bg); width: 100%;
+      border: 1px solid var(--line); border-radius: 8px; min-height: 36px; padding: 6px 10px;
+    }
+    .fp label { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
+    .fp-all { font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 8px !important; }
+    .fp-list { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+    .fp-val { flex: 1; }
+    .fp-count { color: var(--muted); font-size: 12px; }
+    .fp-empty { color: var(--muted); padding: 4px 0; }
+    .fp .link { align-self: flex-start; }
     tbody tr { cursor: pointer; }
     tbody tr:hover { background: var(--hover); }
     tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -210,12 +250,16 @@
         display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
         padding: 8px 16px; border-bottom: 1px solid var(--line);
       }
-      th { position: static; padding: 0; border: 0; }
-      th button {
-        padding: 6px 12px; border: 1px solid var(--line); border-radius: 16px;
-        font-size: 13px; white-space: nowrap;
+      th {
+        position: static; display: flex; align-items: center; padding: 0;
+        border: 1px solid var(--line); border-radius: 16px;
       }
-      th[aria-sort] button { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+      th.cart-col { display: none; }
+      th button { padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+      th button.sort:not(:last-child) { padding-right: 4px; }
+      th .filter-btn { margin: 0; padding: 6px 12px 6px 6px; }
+      th[aria-sort] { border-color: var(--accent); background: var(--accent-bg); }
+      th[aria-sort] button.sort { color: var(--accent); }
       tbody tr {
         display: grid; grid-template-columns: 1fr auto; gap: 2px 12px;
         padding: 10px 16px; border-bottom: 1px solid var(--line);
@@ -277,6 +321,25 @@
     return badge;
   }
 
+  function filterIcon() {
+    const span = el("span", { "aria-hidden": "true" });
+    span.innerHTML =
+      '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 2h13a.5.5 0 0 1 .4.8L10 9v5l-4-2V9L1.1 2.8a.5.5 0 0 1 .4-.8Z"/></svg>';
+    return span;
+  }
+
+  function words(text) {
+    return text.toLowerCase().split(/[\s,]+/).filter(Boolean);
+  }
+
+  // Column text filters keep values that contain any of the words.
+  function matchesAny(value, text) {
+    const list = words(text);
+    if (!list.length) return true;
+    const v = (value || "").toLowerCase();
+    return list.some((w) => v.includes(w));
+  }
+
   function variationUrl(variationId) {
     const url = new URL(location.href);
     url.searchParams.set("var", variationId);
@@ -302,6 +365,7 @@
       ...matrix.labels.map((label, i) => ({
         key: String(i),
         label,
+        filterIndex: i,
         value: (r) => r.values[i] || null,
         compare: (a, b) => collator.compare(a, b),
       })),
@@ -312,6 +376,43 @@
     let sortKey = columns.some((c) => c.key === saved.sortKey) ? saved.sortKey : null;
     let sortDir = saved.sortDir === -1 ? -1 : 1;
 
+    // Column filters: index -> { text, excluded: Set of unticked values }.
+    const filters = new Map();
+    for (const [k, f] of Object.entries(saved.filters || {})) {
+      const i = Number(k);
+      if (!(i >= 0 && i < matrix.labels.length) || !f) continue;
+      filters.set(i, {
+        text: typeof f.text === "string" ? f.text : "",
+        excluded: new Set(Array.isArray(f.excluded) ? f.excluded : []),
+      });
+    }
+    const isActive = (f) => !!f && (words(f.text).length > 0 || f.excluded.size > 0);
+
+    // Popup lists values in the same order as eBay's dropdowns.
+    const valueOrder = matrix.labels.map((_, i) => {
+      const order = new Map();
+      for (const r of matrix.rows) {
+        if (!order.has(r.values[i]) || r.order[i] < order.get(r.values[i])) order.set(r.values[i], r.order[i]);
+      }
+      return order;
+    });
+
+    // Whether a row passes search, stock and column filters (except column `skip`).
+    function passes(r, skip) {
+      if (inStock.checked && r.outOfStock) return false;
+      const terms = words(search.value);
+      if (terms.length) {
+        const hay = r.values.join(" ").toLowerCase();
+        if (!terms.every((term) => hay.includes(term))) return false;
+      }
+      for (const [i, f] of filters) {
+        if (i === skip) continue;
+        const v = r.values[i];
+        if (f.excluded.has(v) || !matchesAny(v, f.text)) return false;
+      }
+      return true;
+    }
+
     const search = el("input", { type: "search", placeholder: t.filter, "aria-label": t.filter });
     // Own column so the badges line up after the widest availability text.
     const hasCart = matrix.rows.some((r) => r.inCart);
@@ -321,12 +422,34 @@
         { scope: "col", class: [c.num && "num", c.cls].filter(Boolean).join(" ") || false },
         el(
           "button",
-          { type: "button", onclick: () => toggleSort(c.key) },
+          { type: "button", class: "sort", onclick: () => toggleSort(c.key) },
           c.label,
           el("span", { class: "arrow", "aria-hidden": "true" })
-        )
+        ),
+        c.filterIndex != null
+          ? el(
+              "button",
+              {
+                type: "button",
+                class: "filter-btn",
+                title: t.filterColumn(c.label),
+                "aria-label": t.filterColumn(c.label),
+                "aria-haspopup": "dialog",
+                onclick: (e) => toggleFilter(c.filterIndex, e.currentTarget),
+              },
+              filterIcon()
+            )
+          : null
       )
     );
+    // Right-click (long-press on phones) on a property header opens its filter.
+    columns.forEach((c, i) => {
+      if (c.filterIndex == null) return;
+      headers[i].addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        openFilter(c.filterIndex, headers[i]);
+      });
+    });
 
     // Header clicks cycle ascending → descending → default order.
     function toggleSort(key) {
@@ -356,6 +479,20 @@
         .map(([r]) => r);
     }
     const inStock = el("input", { type: "checkbox" });
+    const clearAll = el(
+      "button",
+      {
+        type: "button",
+        class: "link",
+        hidden: true,
+        onclick: () => {
+          filters.clear();
+          closeFilter();
+          render();
+        },
+      },
+      t.clearAll
+    );
     search.value = typeof saved.search === "string" ? saved.search : "";
     inStock.checked = saved.inStock === true;
     const summary = el("div", { class: "summary", role: "status" });
@@ -384,7 +521,8 @@
     function onKey(e) {
       if (e.key === "Escape") {
         e.stopPropagation();
-        close();
+        if (popup) closeFilter();
+        else close();
       }
     }
 
@@ -397,15 +535,21 @@
     }
 
     function render() {
-      const terms = search.value.toLowerCase().split(/\s+/).filter(Boolean);
-      let rows = matrix.rows.filter((r) => {
-        if (inStock.checked && r.outOfStock) return false;
-        if (!terms.length) return true;
-        const hay = r.values.join(" ").toLowerCase();
-        return terms.every((term) => hay.includes(term));
-      });
+      let rows = matrix.rows.filter((r) => passes(r, -1));
       rows = sortRows(rows);
-      saveState({ search: search.value, inStock: inStock.checked, sortKey, sortDir });
+
+      const savedFilters = {};
+      for (const [i, f] of filters) {
+        if (isActive(f)) savedFilters[i] = { text: f.text, excluded: [...f.excluded] };
+      }
+      saveState({ search: search.value, inStock: inStock.checked, sortKey, sortDir, filters: savedFilters });
+
+      columns.forEach((c, i) => {
+        const btn = headers[i].querySelector(".filter-btn");
+        if (btn) btn.classList.toggle("active", isActive(filters.get(c.filterIndex)));
+      });
+      clearAll.hidden = !Object.keys(savedFilters).length;
+      if (popup) fillFilter();
 
       columns.forEach((c, i) => {
         if (c.key === sortKey) headers[i].setAttribute("aria-sort", sortDir === 1 ? "ascending" : "descending");
@@ -474,9 +618,143 @@
       tbody.append(frag);
     }
 
+    let popup = null;
+
+    function toggleFilter(i, anchor) {
+      if (popup && popup.index === i) closeFilter();
+      else openFilter(i, anchor);
+    }
+
+    function closeFilter() {
+      if (!popup) return;
+      popup.panel.remove();
+      popup = null;
+    }
+
+    function openFilter(i, anchor) {
+      closeFilter();
+      if (!filters.has(i)) filters.set(i, { text: "", excluded: new Set() });
+      const f = filters.get(i);
+      const label = matrix.labels[i];
+
+      const input = el("input", { type: "search", placeholder: t.contains, "aria-label": t.contains });
+      input.value = f.text;
+      input.addEventListener("input", () => {
+        f.text = input.value;
+        render();
+      });
+      const all = el("input", { type: "checkbox" });
+      all.addEventListener("change", () => {
+        for (const v of popup.visible) {
+          if (all.checked) f.excluded.delete(v);
+          else f.excluded.add(v);
+        }
+        render();
+      });
+      const list = el("div", { class: "fp-list", role: "group", "aria-label": label });
+      const panel = el(
+        "div",
+        { class: "fp", role: "dialog", "aria-label": t.filterColumn(label) },
+        el("div", { class: "fp-title" }, label),
+        input,
+        el("label", { class: "fp-all" }, all, t.selectAll),
+        list,
+        el(
+          "button",
+          {
+            type: "button",
+            class: "link",
+            onclick: () => {
+              filters.delete(i);
+              closeFilter();
+              render();
+            },
+          },
+          t.clearFilter
+        )
+      );
+      popup = { index: i, filter: f, panel, list, all, visible: [] };
+      dialog.append(panel);
+
+      const d = dialog.getBoundingClientRect();
+      const a = anchor.getBoundingClientRect();
+      // Phones get a full-width panel; desktop a small one under the header.
+      const width = matchMedia("(max-width: 640px)").matches ? d.width - 32 : Math.min(280, d.width - 32);
+      const left = Math.max(16, Math.min(a.left - d.left, d.width - width - 16));
+      const top = a.bottom - d.top + 4;
+      panel.style.cssText = `left:${left}px;top:${top}px;width:${width}px;max-height:${Math.max(180, d.height - top - 16)}px`;
+
+      fillFilter();
+      if (window.matchMedia("(pointer: fine)").matches) input.focus();
+    }
+
+    // (Re)builds the popup's value list from rows that pass the other filters.
+    function fillFilter() {
+      const { index: i, filter: f, list, all } = popup;
+      const counts = new Map();
+      for (const r of matrix.rows) {
+        if (passes(r, i)) counts.set(r.values[i], (counts.get(r.values[i]) || 0) + 1);
+      }
+      // Unticked values stay listed so they can be ticked again.
+      for (const v of f.excluded) if (!counts.has(v)) counts.set(v, 0);
+      const order = valueOrder[i];
+      const visible = [...counts.keys()]
+        .filter((v) => matchesAny(v, f.text))
+        .sort((a, b) => (order.has(a) ? order.get(a) : Infinity) - (order.has(b) ? order.get(b) : Infinity));
+      popup.visible = visible;
+
+      const focused = shadow.activeElement && shadow.activeElement.getAttribute("data-value");
+      list.replaceChildren(
+        ...(visible.length
+          ? visible.map((v) => {
+              const box = el("input", { type: "checkbox", "data-value": v });
+              box.checked = !f.excluded.has(v);
+              box.addEventListener("change", () => {
+                if (box.checked) f.excluded.delete(v);
+                else f.excluded.add(v);
+                render();
+              });
+              return el(
+                "label",
+                {},
+                box,
+                el("span", { class: "fp-val" }, v),
+                el("span", { class: "fp-count" }, String(counts.get(v)))
+              );
+            })
+          : [el("div", { class: "fp-empty" }, t.noValues)])
+      );
+      if (focused != null) {
+        const again = [...list.querySelectorAll("input")].find((b) => b.getAttribute("data-value") === focused);
+        if (again) again.focus();
+      }
+
+      const ticked = visible.filter((v) => !f.excluded.has(v)).length;
+      all.checked = visible.length > 0 && ticked === visible.length;
+      all.indeterminate = ticked > 0 && ticked < visible.length;
+    }
+
     search.addEventListener("input", render);
     inStock.addEventListener("change", render);
 
+    const dialog = el(
+      "div",
+      { class: "dialog", role: "dialog", "aria-modal": "true", "aria-label": t.title },
+      el(
+        "header",
+        {},
+        el("h2", {}, t.title),
+        el("button", { class: "close", type: "button", "aria-label": t.close, onclick: close }, "×")
+      ),
+      el("div", { class: "toolbar" }, search, el("label", {}, inStock, t.inStockOnly), clearAll),
+      summary,
+      scroll,
+      el("div", { class: "hint" }, t.hint)
+    );
+    // A click outside the filter popup closes it (its own header button toggles it).
+    dialog.addEventListener("pointerdown", (e) => {
+      if (popup && !popup.panel.contains(e.target) && !e.target.closest(".filter-btn")) closeFilter();
+    });
     const backdrop = el(
       "div",
       {
@@ -485,20 +763,7 @@
           if (e.target === backdrop) close();
         },
       },
-      el(
-        "div",
-        { class: "dialog", role: "dialog", "aria-modal": "true", "aria-label": t.title },
-        el(
-          "header",
-          {},
-          el("h2", {}, t.title),
-          el("button", { class: "close", type: "button", "aria-label": t.close, onclick: close }, "×")
-        ),
-        el("div", { class: "toolbar" }, search, el("label", {}, inStock, t.inStockOnly)),
-        summary,
-        scroll,
-        el("div", { class: "hint" }, t.hint)
-      )
+      dialog
     );
     shadow.append(backdrop);
 
