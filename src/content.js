@@ -20,6 +20,8 @@
       availability: "Availability",
       outOfStock: "Out of stock",
       current: "selected",
+      inCart: "In cart",
+      inCartCount: (n) => `${n} in cart`,
       close: "Close",
       count: (shown, total) => `${shown} of ${total} variations`,
       noMatch: "No variations match.",
@@ -34,6 +36,8 @@
       availability: "Verfügbarkeit",
       outOfStock: "Nicht vorrätig",
       current: "ausgewählt",
+      inCart: "Im Warenkorb",
+      inCartCount: (n) => `${n} im Warenkorb`,
       close: "Schließen",
       count: (shown, total) => `${shown} von ${total} Varianten`,
       noMatch: "Keine passenden Varianten.",
@@ -180,6 +184,14 @@
       vertical-align: middle;
     }
     .avail { color: var(--muted); font-size: 13px; }
+    .cart {
+      display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 0 6px;
+      border: 1px solid var(--accent); border-radius: 8px;
+      font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap;
+      vertical-align: middle;
+    }
+    .cart svg { width: 12px; height: 12px; }
+    td.avail-cell .cart:first-child { margin-left: 0; }
     .empty { padding: 24px 16px; text-align: center; color: var(--muted); }
     .hint { padding: 8px 16px 12px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
 
@@ -246,6 +258,14 @@
     } catch (e) {
       // Storage blocked or full: the dialog still works, it just won't remember.
     }
+  }
+
+  function cartBadge() {
+    const badge = el("span", { class: "cart" });
+    badge.innerHTML =
+      '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1.5h2l1.6 8.5h8l1.4-6H4"/><circle cx="6" cy="13.5" r="1.2"/><circle cx="12" cy="13.5" r="1.2"/></svg>';
+    badge.append(t.inCart);
+    return badge;
   }
 
   function variationUrl(variationId) {
@@ -388,6 +408,8 @@
             ? ` · ${formatMoney(minPrice, currency)}`
             : ` · ${formatMoney(minPrice, currency)} – ${formatMoney(maxPrice, currency)}`;
       }
+      const inCartCount = matrix.rows.filter((r) => r.inCart).length;
+      if (inCartCount) text += ` · ${t.inCartCount(inCartCount)}`;
       summary.textContent = text;
 
       tbody.replaceChildren();
@@ -433,7 +455,12 @@
             )
           ),
           el("td", { class: "num price-cell" }, el("span", { class: "price" }, priceText)),
-          el("td", { class: "avail-cell" }, el("span", { class: "avail" }, availText || ""))
+          el(
+            "td",
+            { class: "avail-cell" },
+            availText ? el("span", { class: "avail" }, availText) : null,
+            row.inCart ? cartBadge() : null
+          )
         );
         frag.append(tr);
       }

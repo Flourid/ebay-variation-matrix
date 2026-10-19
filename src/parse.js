@@ -96,6 +96,8 @@
         // repeat listing-wide stats like the total sold count.
         availability: firstSpanText(qty.availabilitySignal),
         outOfStock: !!qty.outOfStock,
+        // eBay only says whether the variation is in the cart, not how many.
+        inCart: !!(v.binModel && v.binModel.isAddedToCart),
       });
     }
 

@@ -5,6 +5,7 @@ Firefox extension (desktop and Android) that adds an **"Show all variations"** b
 - Filter by text, sort by any column (click a header; on phones the headers are a row of sort buttons), hide sold-out variations
 - Prices are formatted for the site language (e.g. "14,99 €" on eBay.de)
 - The currently selected variation is highlighted and the cheapest in-stock price is shown in green
+- Variations already in your cart get an "Im Warenkorb" / "In cart" badge. eBay's item page only says whether a variation is in the cart, not how many, and it reflects the cart when the page was loaded
 - Click or tap a row to switch the listing to that variation
 - Filter, "in stock only" and sort order are remembered per item while the tab is open, including after picking a variation
 - Full-screen card layout on phones, table on desktop; always light to match eBay (set `FOLLOW_SYSTEM_DARK_MODE` in `src/content.js` to follow the system dark mode)
