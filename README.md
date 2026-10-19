@@ -2,7 +2,8 @@
 
 Firefox extension (desktop and Android) that adds an **"Show all variations"** button below the variation dropdowns on eBay listings. It opens a list of every variation combination with its price and stock.
 
-- Filter by text, sort by any column (click a header, or use the sort menu on phones), hide sold-out variations
+- Filter by text, sort by any column (click a header; on phones the headers are a row of sort buttons), hide sold-out variations
+- Prices are formatted for the site language (e.g. "14,99 €" on eBay.de)
 - The currently selected variation is highlighted and the cheapest in-stock price is shown in green
 - Click or tap a row to switch the listing to that variation
 - Full-screen card layout on phones, table on desktop, follows the system dark mode

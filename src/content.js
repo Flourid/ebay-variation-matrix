@@ -12,8 +12,6 @@
       button: "Show all variations",
       title: "All variations",
       filter: "Filter…",
-      sort: "Sort",
-      sortDefault: "Default order",
       inStockOnly: "In stock only",
       price: "Price",
       availability: "Availability",
@@ -28,8 +26,6 @@
       button: "Alle Varianten anzeigen",
       title: "Alle Varianten",
       filter: "Filtern…",
-      sort: "Sortierung",
-      sortDefault: "Standard",
       inStockOnly: "Nur verfügbare",
       price: "Preis",
       availability: "Verfügbarkeit",
@@ -136,12 +132,11 @@
       display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
       padding: 0 16px 12px; border-bottom: 1px solid var(--line);
     }
-    .toolbar input[type="search"], .toolbar select {
+    .toolbar input[type="search"] {
       font: inherit; color: var(--fg); background: var(--bg);
       border: 1px solid var(--line); border-radius: 8px;
-      min-height: 36px; padding: 6px 10px;
+      min-height: 36px; padding: 6px 10px; flex: 1 1 200px; min-width: 0;
     }
-    .toolbar input[type="search"] { flex: 1 1 200px; min-width: 0; }
     .toolbar label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
     .summary { padding: 8px 16px; color: var(--muted); font-size: 13px; }
     .scroll { overflow: auto; flex: 1; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
@@ -185,9 +180,20 @@
     @media (max-width: 640px) {
       .backdrop { align-items: stretch; }
       .dialog { width: 100vw; max-height: none; height: 100%; border-radius: 0; }
-      thead { display: none; }
-      table, tbody, tr, td { display: block; }
-      tr {
+      /* Column headers become a scrollable row of sort chips above the cards. */
+      table, thead, tbody, tbody tr, td { display: block; }
+      thead { position: sticky; top: 0; z-index: 1; background: var(--bg); }
+      thead tr {
+        display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+        padding: 8px 16px; border-bottom: 1px solid var(--line);
+      }
+      th { position: static; padding: 0; border: 0; }
+      th button {
+        padding: 6px 12px; border: 1px solid var(--line); border-radius: 16px;
+        font-size: 13px; white-space: nowrap;
+      }
+      th[aria-sort] button { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+      tbody tr {
         display: grid; grid-template-columns: 1fr auto; gap: 2px 12px;
         padding: 10px 16px; border-bottom: 1px solid var(--line);
       }
@@ -249,15 +255,6 @@
     let sortDir = 1;
 
     const search = el("input", { type: "search", placeholder: t.filter, "aria-label": t.filter });
-    const sort = el(
-      "select",
-      { "aria-label": t.sort },
-      el("option", { value: "default" }, t.sortDefault),
-      ...columns.flatMap((c) => [
-        el("option", { value: `${c.key}:1` }, `${c.label} ↑`),
-        el("option", { value: `${c.key}:-1` }, `${c.label} ↓`),
-      ])
-    );
     const headers = columns.map((c) =>
       el(
         "th",
@@ -347,7 +344,6 @@
       });
       rows = sortRows(rows);
 
-      sort.value = sortKey == null ? "default" : `${sortKey}:${sortDir}`;
       columns.forEach((c, i) => {
         if (c.key === sortKey) headers[i].setAttribute("aria-sort", sortDir === 1 ? "ascending" : "descending");
         else headers[i].removeAttribute("aria-sort");
@@ -378,7 +374,7 @@
         if (!row.outOfStock && row.price != null && row.price === minPrice) classes.push("cheapest");
 
         const priceText =
-          row.priceText || (row.price != null && row.currency ? formatMoney(row.price, row.currency) : "–");
+          row.price != null && row.currency ? formatMoney(row.price, row.currency) : row.priceText || "–";
         const availText = row.outOfStock ? matrix.outOfStockLabel || t.outOfStock : row.availability;
 
         const tr = el(
@@ -413,13 +409,6 @@
     }
 
     search.addEventListener("input", render);
-    sort.addEventListener("change", () => {
-      const [key, dir] = sort.value.split(":");
-      sortKey = sort.value === "default" ? null : key;
-      sortDir = Number(dir) || 1;
-      render();
-      scroll.scrollTop = 0;
-    });
     inStock.addEventListener("change", render);
 
     const backdrop = el(
@@ -439,7 +428,7 @@
           el("h2", {}, t.title),
           el("button", { class: "close", type: "button", "aria-label": t.close, onclick: close }, "×")
         ),
-        el("div", { class: "toolbar" }, search, sort, el("label", {}, inStock, t.inStockOnly)),
+        el("div", { class: "toolbar" }, search, el("label", {}, inStock, t.inStockOnly)),
         summary,
         scroll,
         el("div", { class: "hint" }, t.hint)
