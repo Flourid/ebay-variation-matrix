@@ -18,6 +18,6 @@
   "requires_payment": false,
   "version": {
     "license": "MIT",
-    "approval_notes": "No build step: the submitted files are the source (https://github.com/Flourid/ebay-variation-matrix). The content script only runs on eBay item pages (/itm/*). It parses the variation JSON that eBay embeds in an inline <script> and renders a dialog in a closed shadow root. It makes no network requests and uses no extension APIs; the dialog's filter/sort state is kept in the page's sessionStorage. Test page with many variations: https://www.ebay.de/itm/127910134556"
+    "approval_notes": "No build step: the submitted files are the source (https://github.com/Flourid/ebay-variation-matrix). The content script only runs on eBay item pages (/itm/*). It parses the variation JSON that eBay embeds in an inline <script> and renders a dialog in a closed shadow root. It makes no network requests and uses no extension APIs apart from runtime.getManifest(); the dialog's filter/sort state is kept in the page's sessionStorage. If a listing has variation dropdowns but no readable data, it shows a link that opens a prefilled GitHub issue in a new tab (listing URL without tracking parameters, Firefox/add-on version); nothing is sent unless the user clicks it and submits the issue. Test page with many variations: https://www.ebay.de/itm/127910134556"
   }
 }

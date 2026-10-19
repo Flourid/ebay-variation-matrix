@@ -1,0 +1,45 @@
+name: Not working on a listing
+description: The button is missing, shows a report link, or the list is wrong on an eBay listing.
+title: "Not working: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! eBay changes its pages from time to time; the link to the listing is usually all that's needed to find out what changed.
+        If you came here from the add-on's "report a problem" link, the fields below are already filled in.
+  - type: input
+    id: listing
+    attributes:
+      label: Link to the eBay listing
+      placeholder: https://www.ebay.de/itm/127910134556
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: E.g. no button below the dropdowns, "couldn't read the variations" link, wrong prices, missing variations.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Device
+      placeholder: Firefox (desktop) or Firefox for Android
+  - type: input
+    id: firefox
+    attributes:
+      label: Firefox version
+  - type: input
+    id: version
+    attributes:
+      label: Add-on version
+      description: Shown in about:addons.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before submitting
+      options:
+        - label: My report doesn't contain personal data (name, address, order details). Please don't attach saved pages from a logged-in session.
+          required: true

@@ -6,6 +6,7 @@
   const CONTAINER_SELECTOR = '[data-testid="x-msku-evo"], .x-msku-evo';
   const BUTTON_HOST_ID = "evm-button-host";
   const MODAL_HOST_ID = "evm-modal-host";
+  const ISSUE_URL = "https://github.com/Flourid/ebay-variation-matrix/issues/new";
   // eBay's website is light-only, so the dialog stays light to match it.
   // Set to true to follow the system dark mode again (see DARK_CSS).
   const FOLLOW_SYSTEM_DARK_MODE = false;
@@ -28,6 +29,7 @@
       clearFilter: "Clear filter",
       clearAll: "Clear all filters",
       noValues: "No values",
+      broken: "Couldn't read the variations – report a problem",
       close: "Close",
       count: (shown, total) => `${shown} of ${total} variations`,
       noMatch: "No variations match.",
@@ -50,6 +52,7 @@
       clearFilter: "Filter löschen",
       clearAll: "Alle Filter löschen",
       noValues: "Keine Werte",
+      broken: "Varianten konnten nicht gelesen werden – Problem melden",
       close: "Schließen",
       count: (shown, total) => `${shown} von ${total} Varianten`,
       noMatch: "Keine passenden Varianten.",
@@ -110,6 +113,14 @@
     button:hover { background: rgba(54, 101, 243, 0.06); }
     button:focus-visible { outline: 2px solid #3665f3; outline-offset: 2px; }
     svg { width: 16px; height: 16px; flex: none; }
+    a {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 40px; padding: 8px 16px; box-sizing: border-box;
+      font: inherit; font-size: 13px; color: #707070; text-align: center;
+      border: 1px dashed #c7c7c7; border-radius: 20px;
+    }
+    a:hover { color: #3665f3; border-color: #3665f3; }
+    a:focus-visible { outline: 2px solid #3665f3; outline-offset: 2px; }
   `;
 
   const DARK_CSS = `
@@ -793,6 +804,46 @@
     return host;
   }
 
+  function addonVersion() {
+    try {
+      return browser.runtime.getManifest().version;
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // Prefilled issue for when eBay changed its page and the data can't be read.
+  // Only the listing's address is included, without tracking parameters.
+  function reportUrl() {
+    const page = new URL(location.href);
+    const variation = page.searchParams.get("var");
+    const listing = page.origin + page.pathname + (variation ? `?var=${encodeURIComponent(variation)}` : "");
+    const ua = navigator.userAgent;
+    const params = new URLSearchParams({
+      template: "broken-listing.yml",
+      title: `Not working: ${page.hostname}${page.pathname}`,
+      listing,
+      what: "The add-on showed \"Couldn't read the variations\" on this listing.",
+      platform: /Android/.test(ua) ? "Firefox for Android" : "Firefox (desktop)",
+      firefox: (/Firefox\/([\d.]+)/.exec(ua) || [])[1] || "",
+      version: addonVersion(),
+    });
+    return `${ISSUE_URL}?${params}`;
+  }
+
+  function createReportLink() {
+    const host = el("div", { id: BUTTON_HOST_ID, style: "display:block;margin:12px 0 0;padding:0" });
+    const shadow = host.attachShadow({ mode: "closed" });
+    shadow.append(el("style", {}, BUTTON_CSS));
+    // The address is built on click so it carries the variation picked by then.
+    const link = el("a", { href: ISSUE_URL, target: "_blank", rel: "noopener noreferrer" }, t.broken);
+    const refresh = () => link.setAttribute("href", reportUrl());
+    link.addEventListener("pointerdown", refresh);
+    link.addEventListener("focus", refresh);
+    shadow.append(link);
+    return host;
+  }
+
   function ensureButton() {
     // The mobile page carries a hidden duplicate of the block; use the visible one.
     const container = Array.from(document.querySelectorAll(CONTAINER_SELECTOR)).find(
@@ -802,9 +853,10 @@
     const existing = document.getElementById(BUTTON_HOST_ID);
     if (existing && existing.previousElementSibling === container) return;
     const matrix = loadMatrix();
-    if (!matrix || matrix.rows.length < 2) return;
+    // A single variation needs no list; no data at all means eBay changed its page.
+    if (matrix && matrix.rows.length === 1) return;
     if (existing) existing.remove();
-    container.after(createButton());
+    container.after(matrix && matrix.rows.length ? createButton() : createReportLink());
   }
 
   ensureButton();
