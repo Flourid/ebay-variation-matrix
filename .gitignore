@@ -1,2 +1,6 @@
 web-ext-artifacts/
 node_modules/
+
+# Saved eBay pages may contain personal data; keep them local.
+test/fixtures/*
+!test/fixtures/README.md

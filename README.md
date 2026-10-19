@@ -29,5 +29,7 @@ With Manifest V3, Firefox may ask you to allow access to eBay sites. Accept it, 
 ```sh
 npx web-ext lint
 npx web-ext build            # zip in web-ext-artifacts/
-node test/parse.test.js saved-item-page.html
+node test/parse.test.js test/fixtures/item-127910134556-desktop.html
 ```
+
+Saved eBay pages for testing go in `test/fixtures/`. That directory is git-ignored because saved pages can contain personal data (see `test/fixtures/README.md`).
