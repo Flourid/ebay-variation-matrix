@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "eBay Variation Matrix",
+  "version": "1.0.0",
+  "description": "Adds a button next to the variation dropdowns on eBay listings that shows every variation with its price and availability.",
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "ebay-variation-matrix@nmaus",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "128.0"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.ebay.com/itm/*",
+        "https://*.ebay.de/itm/*",
+        "https://*.ebay.at/itm/*",
+        "https://*.ebay.ch/itm/*",
+        "https://*.ebay.co.uk/itm/*",
+        "https://*.ebay.ie/itm/*",
+        "https://*.ebay.fr/itm/*",
+        "https://*.ebay.it/itm/*",
+        "https://*.ebay.es/itm/*",
+        "https://*.ebay.nl/itm/*",
+        "https://*.ebay.be/itm/*",
+        "https://*.ebay.pl/itm/*",
+        "https://*.ebay.ca/itm/*",
+        "https://*.ebay.com.au/itm/*"
+      ],
+      "js": ["src/parse.js", "src/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
