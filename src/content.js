@@ -6,6 +6,9 @@
   const CONTAINER_SELECTOR = '[data-testid="x-msku-evo"], .x-msku-evo';
   const BUTTON_HOST_ID = "evm-button-host";
   const MODAL_HOST_ID = "evm-modal-host";
+  // eBay's website is light-only, so the dialog stays light to match it.
+  // Set to true to follow the system dark mode again (see DARK_CSS).
+  const FOLLOW_SYSTEM_DARK_MODE = false;
 
   const STRINGS = {
     en: {
@@ -93,6 +96,15 @@
     svg { width: 16px; height: 16px; flex: none; }
   `;
 
+  const DARK_CSS = `
+    @media (prefers-color-scheme: dark) {
+      .backdrop {
+        --bg: #1c1c1e; --fg: #f2f2f2; --muted: #a0a0a0; --line: #3a3a3c;
+        --hover: #2a2a2d; --accent: #7a9cff; --accent-bg: #23304f; --ok: #4cc77f;
+      }
+    }
+  `;
+
   const MODAL_CSS = `
     :host { all: initial; }
     * { box-sizing: border-box; }
@@ -105,12 +117,7 @@
       --hover: #f7f7f7; --accent: #3665f3; --accent-bg: #eef2fe; --ok: #05823f;
       color: var(--fg);
     }
-    @media (prefers-color-scheme: dark) {
-      .backdrop {
-        --bg: #1c1c1e; --fg: #f2f2f2; --muted: #a0a0a0; --line: #3a3a3c;
-        --hover: #2a2a2d; --accent: #7a9cff; --accent-bg: #23304f; --ok: #4cc77f;
-      }
-    }
+    ${FOLLOW_SYSTEM_DARK_MODE ? DARK_CSS : ""}
     .dialog {
       background: var(--bg); width: min(960px, calc(100vw - 32px));
       max-height: calc(100vh - 48px); border-radius: 16px;

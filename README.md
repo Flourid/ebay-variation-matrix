@@ -6,7 +6,7 @@ Firefox extension (desktop and Android) that adds an **"Show all variations"** b
 - Prices are formatted for the site language (e.g. "14,99 €" on eBay.de)
 - The currently selected variation is highlighted and the cheapest in-stock price is shown in green
 - Click or tap a row to switch the listing to that variation
-- Full-screen card layout on phones, table on desktop, follows the system dark mode
+- Full-screen card layout on phones, table on desktop; always light to match eBay (set `FOLLOW_SYSTEM_DARK_MODE` in `src/content.js` to follow the system dark mode)
 
 ## Permissions
 
