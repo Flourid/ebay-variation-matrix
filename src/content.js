@@ -150,7 +150,10 @@
     }
     .toolbar label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
     .summary { padding: 8px 16px; color: var(--muted); font-size: 13px; }
-    .scroll { overflow: auto; flex: 1; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    .scroll {
+      overflow: auto; flex: 1; min-height: 0;
+      -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+    }
     table { width: 100%; border-collapse: collapse; }
     th {
       position: sticky; top: 0; background: var(--bg); z-index: 1;
@@ -185,13 +188,12 @@
     }
     .avail { color: var(--muted); font-size: 13px; }
     .cart {
-      display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 0 6px;
+      display: inline-flex; align-items: center; gap: 4px; padding: 0 6px;
       border: 1px solid var(--accent); border-radius: 8px;
       font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap;
       vertical-align: middle;
     }
     .cart svg { width: 12px; height: 12px; }
-    td.avail-cell .cart:first-child { margin-left: 0; }
     .empty { padding: 24px 16px; text-align: center; color: var(--muted); }
     .hint { padding: 8px 16px 12px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
 
@@ -201,7 +203,9 @@
       .dialog { width: 100vw; max-height: none; height: 100%; border-radius: 0; }
       /* Column headers become a scrollable row of sort chips above the cards. */
       table, thead, tbody, tbody tr, td { display: block; }
-      thead { position: sticky; top: 0; z-index: 1; background: var(--bg); }
+      /* The shadow covers a thin strip at the top edge where rows scrolled under
+         the sticky header show through when it lands on a fractional pixel. */
+      thead { position: sticky; top: 0; z-index: 1; background: var(--bg); box-shadow: 0 -4px 0 var(--bg); }
       thead tr {
         display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
         padding: 8px 16px; border-bottom: 1px solid var(--line);
@@ -221,12 +225,17 @@
       td.attr .lbl { color: var(--muted); }
       td.attr .lbl::after { content: ": "; }
       td.price-cell { grid-column: 2; grid-row: 1; text-align: right; }
-      td.avail-cell { grid-column: 1 / -1; }
+      td.avail-cell { grid-column: 1; }
+      td.cart-cell { grid-column: 2; text-align: right; }
       tr.current td:first-child { box-shadow: none; }
       tr.current { box-shadow: inset 3px 0 0 var(--accent); }
     }
     @media (min-width: 641px) {
       td.attr .lbl { display: none; }
+      /* Availability and badge columns shrink to their content so the badge
+         sits right after the availability text; spare width goes to the attributes. */
+      .avail-col, .cart-col { width: 1%; white-space: nowrap; }
+      td.cart-col { padding-left: 0; }
     }
   `;
 
@@ -297,17 +306,19 @@
         compare: (a, b) => collator.compare(a, b),
       })),
       { key: "price", label: t.price, num: true, value: (r) => r.price, compare: (a, b) => a - b },
-      { key: "stock", label: t.availability, value: stockCount, compare: (a, b) => a - b },
+      { key: "stock", label: t.availability, cls: "avail-col", value: stockCount, compare: (a, b) => a - b },
     ];
     const saved = loadState();
     let sortKey = columns.some((c) => c.key === saved.sortKey) ? saved.sortKey : null;
     let sortDir = saved.sortDir === -1 ? -1 : 1;
 
     const search = el("input", { type: "search", placeholder: t.filter, "aria-label": t.filter });
+    // Own column so the badges line up after the widest availability text.
+    const hasCart = matrix.rows.some((r) => r.inCart);
     const headers = columns.map((c) =>
       el(
         "th",
-        { scope: "col", class: c.num ? "num" : false },
+        { scope: "col", class: [c.num && "num", c.cls].filter(Boolean).join(" ") || false },
         el(
           "button",
           { type: "button", onclick: () => toggleSort(c.key) },
@@ -358,7 +369,7 @@
         el(
           "thead",
           {},
-          el("tr", {}, ...headers)
+          el("tr", {}, ...headers, hasCart ? el("th", { scope: "col", class: "cart-col", "aria-label": t.inCart }) : null)
         ),
         tbody
       )
@@ -415,7 +426,7 @@
       tbody.replaceChildren();
       if (!rows.length) {
         tbody.append(
-          el("tr", {}, el("td", { class: "empty", colspan: matrix.labels.length + 2 }, t.noMatch))
+          el("tr", {}, el("td", { class: "empty", colspan: columns.length + (hasCart ? 1 : 0) }, t.noMatch))
         );
         return;
       }
@@ -455,12 +466,8 @@
             )
           ),
           el("td", { class: "num price-cell" }, el("span", { class: "price" }, priceText)),
-          el(
-            "td",
-            { class: "avail-cell" },
-            availText ? el("span", { class: "avail" }, availText) : null,
-            row.inCart ? cartBadge() : null
-          )
+          el("td", { class: "avail-cell avail-col" }, el("span", { class: "avail" }, availText || "")),
+          hasCart ? el("td", { class: "cart-cell cart-col" }, row.inCart ? cartBadge() : null) : null
         );
         frag.append(tr);
       }
@@ -501,7 +508,10 @@
     document.addEventListener("keydown", onKey, true);
 
     const current = tbody.querySelector("tr.current");
-    if (current) current.scrollIntoView({ block: "center" });
+    if (current) {
+      const offset = current.getBoundingClientRect().top - scroll.getBoundingClientRect().top;
+      scroll.scrollTop += offset - (scroll.clientHeight - current.offsetHeight) / 2;
+    }
     if (window.matchMedia("(pointer: fine)").matches) search.focus();
   }
 
